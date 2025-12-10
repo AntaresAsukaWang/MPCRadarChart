@@ -277,14 +277,9 @@ const sectionBackgroundPlugin = {
     const outerRadius = r.drawingArea;
     const labelCount = chart.data.labels.length;
 
-    // Use the same transform as the datasets (supports dead-center shift)
-    const transformValue = chart._transformValue || ((v) => v);
-    const scaleMin = r.min;
-    const scaleMax = r.max;
-
-    // Map values (0 and 1) to radii using the radial scale helper
-    const r0 = r.getDistanceFromCenterForValue(transformValue(0));
-    const r1 = r.getDistanceFromCenterForValue(transformValue(1));
+    // Fixed proportions for sections: <0 = 30%, 0-1 = 20%, >1 = 50%
+    const r0 = outerRadius * 0.30; // boundary for 0
+    const r1 = outerRadius * 0.50; // boundary for 1
 
     // Helper to draw a ring section
     const drawRing = (innerR, outerR, color) => {
