@@ -820,8 +820,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 display: true,
                 color: function(context) {
                   const label = context.label;
-                  const groupInfo = getIndicatorGroup(label);
-                  return groupInfo.color || '#999999';
+                  
+                  // Inflation group
+                  if (['current CPI inflation', 'core inflation', 'food price inflation', 
+                       'services inflation', 'household inflation expectations', 
+                       'services PPI', 'corporate GOS'].includes(label)) {
+                    return '#E8956F';
+                  }
+                  
+                  // Labour Market group
+                  if (['current wage growth', 'median pay growth', 'participation rate', 
+                       'vacancy rate', 'V/U', 'unemployment rate'].includes(label)) {
+                    return '#6CA6CD';
+                  }
+                  
+                  // Macro-Finance group
+                  if (['savings ratio', 'consumer confidence', 'GDP', 'FTSE100'].includes(label)) {
+                    return '#6FBD92';
+                  }
+                  
+                  return '#999999'; // default
                 },
                 font: {
                   size: 11,
