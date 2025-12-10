@@ -416,8 +416,35 @@ document.addEventListener('DOMContentLoaded', () => {
       return { groupName: 'Other', color: '#999999' };
     }
 
-    // Register label colors plugin after getIndicatorGroup is defined
-    // (Removed - now using pointLabels color callback instead)
+    // Register colored labels plugin after getIndicatorGroup is defined
+    Chart.register({
+      id: 'coloredLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx, scales: { r } } = chart;
+        if (!r) return;
+
+        const centerX = r.xCenter;
+        const centerY = r.yCenter;
+        const outerRadius = r.drawingArea;
+        const labelCount = chart.data.labels.length;
+
+        chart.data.labels.forEach((label, i) => {
+          const angle = (Math.PI * 2 * i) / labelCount - Math.PI / 2;
+          const x = centerX + Math.cos(angle) * (outerRadius + 30);
+          const y = centerY + Math.sin(angle) * (outerRadius + 30);
+
+          const { color } = getIndicatorGroup(label);
+
+          ctx.save();
+          ctx.fillStyle = color;
+          ctx.font = '600 12px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(label, x, y);
+          ctx.restore();
+        });
+      }
+    });
 
     function showError(msg) {
       errorBox.textContent = msg;
@@ -772,15 +799,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 drawBorder: false
               },
               pointLabels: {
-                color: function(context) {
-                  const label = context.label;
-                  const { color } = getIndicatorGroup(label);
-                  return color;
-                },
-                font: {
-                  size: 12,
-                  weight: 600
-                }
+                display: false
               },
               angleLines: {
                 display: true,
