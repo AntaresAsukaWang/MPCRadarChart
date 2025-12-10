@@ -375,13 +375,13 @@ document.addEventListener('DOMContentLoaded', () => {
       'Inflation': {
         color: '#E8956F',
         indicators: [
-          'current CPI inflation',
-          'core inflation',
-          'food price inflation',
-          'services inflation',
-          'household inflation expectations',
-          'services PPI',
-          'corporate GOS'
+          'CPI inflation',
+          'Core inflation',
+          'Food price inflation',
+          'Services inflation',
+          'Household inflation expectations',
+          'Input PPI',
+          'Corporate GOS'
         ]
       },
       'Labour Market': {
@@ -822,9 +822,9 @@ document.addEventListener('DOMContentLoaded', () => {
                   const label = context.label;
                   
                   // Inflation group
-                  if (['current CPI inflation', 'core inflation', 'food price inflation', 
-                       'services inflation', 'household inflation expectations', 
-                       'services PPI', 'corporate GOS'].includes(label)) {
+                  if (['CPI inflation', 'Core inflation', 'Food price inflation', 
+                       'Services inflation', 'Household inflation expectations', 
+                       'Input PPI', 'Corporate GOS'].includes(label)) {
                     return '#E8956F';
                   }
                   
