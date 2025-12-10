@@ -277,10 +277,10 @@ const sectionBackgroundPlugin = {
     const outerRadius = r.drawingArea;
     const labelCount = chart.data.labels.length;
 
-    // Boundaries anchored to actual scale values 0 and 1 (with data transform)
-    const transformValue = chart._transformValue || ((v) => v);
-    const r0 = r.getDistanceFromCenterForValue(transformValue(0));
-    const r1 = r.getDistanceFromCenterForValue(transformValue(1));
+    // Fixed radial proportions (independent of data scale):
+    // <0 = 30%, 0–1 = 20%, >1 = 50%
+    const r0 = outerRadius * 0.30; // boundary for 0
+    const r1 = outerRadius * 0.50; // boundary for 1
 
     // Helper to draw a ring section
     const drawRing = (innerR, outerR, color) => {
@@ -314,19 +314,10 @@ const sectionBackgroundPlugin = {
       ctx.restore();
     };
 
-    // Sections: <0 blue, 0-1 grey, >1 coral (scaleMin used for check only)
-    const scaleMin = r.min;
-    if (scaleMin < 0 && r0 > 0) {
-      drawRing(0, r0, 'rgba(108, 166, 205, 0.18)'); // blue-like from palette
-    }
-    const innerMid = Math.max(0, r0);
-    const outerMid = Math.max(innerMid, r1);
-    if (outerMid > innerMid) {
-      drawRing(innerMid, outerMid, 'rgba(190, 190, 190, 0.18)'); // grey-like
-    }
-    if (outerRadius > r1) {
-      drawRing(Math.max(0, r1), outerRadius, 'rgba(232, 149, 111, 0.18)'); // coral/red-like
-    }
+    // Sections: fixed rings <0 blue, 0-1 grey, >1 coral
+    drawRing(0, r0, 'rgba(108, 166, 205, 0.18)'); // blue-like from palette
+    drawRing(r0, r1, 'rgba(190, 190, 190, 0.18)'); // grey-like
+    drawRing(r1, outerRadius, 'rgba(232, 149, 111, 0.18)'); // coral/red-like
 
     // Draw boundary lines at 0 and 1
     ctx.save();
