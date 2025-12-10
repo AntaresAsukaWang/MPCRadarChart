@@ -417,31 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Register label colors plugin after getIndicatorGroup is defined
-    Chart.register({
-      id: 'labelColors',
-      afterDatasetsDraw(chart) {
-        const { ctx, scales: { r } } = chart;
-        if (!r) return;
-
-        const centerX = r.xCenter;
-        const centerY = r.yCenter;
-        const outerRadius = r.drawingArea;
-        const labelCount = chart.data.labels.length;
-
-        chart.data.labels.forEach((label, i) => {
-          const angle = (Math.PI * 2 * i) / labelCount - Math.PI / 2;
-          const x = centerX + Math.cos(angle) * (outerRadius + 25);
-          const y = centerY + Math.sin(angle) * (outerRadius + 25);
-
-          const { color } = getIndicatorGroup(label);
-
-          ctx.save();
-          ctx.fillStyle = color;
-          ctx.fillRect(x - 6, y - 6, 12, 12);
-          ctx.restore();
-        });
-      }
-    });
+    // (Removed - now using pointLabels color callback instead)
 
     function showError(msg) {
       errorBox.textContent = msg;
@@ -796,7 +772,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 drawBorder: false
               },
               pointLabels: {
-                color: '#161C4E',
+                color: function(context) {
+                  const label = context.label;
+                  const { color } = getIndicatorGroup(label);
+                  return color;
+                },
                 font: {
                   size: 12,
                   weight: 600
