@@ -313,7 +313,8 @@ const sectionBackgroundPlugin = {
       ctx.restore();
     };
 
-    // Sections: <0 blue, 0-1 grey, >1 coral
+    // Sections: <0 blue, 0-1 grey, >1 coral (scaleMin used for check only)
+    const scaleMin = r.min;
     if (scaleMin < 0 && r0 > 0) {
       drawRing(0, r0, 'rgba(108, 166, 205, 0.15)');
     }
