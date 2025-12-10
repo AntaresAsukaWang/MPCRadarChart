@@ -279,6 +279,8 @@ const sectionBackgroundPlugin = {
 
     // Use the same transform as the datasets (supports dead-center shift)
     const transformValue = chart._transformValue || ((v) => v);
+    const scaleMin = r.min;
+    const scaleMax = r.max;
 
     // Map values (0 and 1) to radii using the radial scale helper
     const r0 = r.getDistanceFromCenterForValue(transformValue(0));
