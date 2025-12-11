@@ -296,9 +296,9 @@ const sectionBackgroundPlugin = {
     const labelCount = chart.data.labels.length;
 
     // Fixed radial proportions (independent of data scale):
-    // <0 = 30%, 0–1 = 20%, >1 = 50%
-    const r0 = outerRadius * 0.30; // boundary for 0
-    const r1 = outerRadius * 0.50; // boundary for 1
+    // <0 = 40%, 0–1 = 20%, >1 = 40%
+    const r0 = outerRadius * 0.40; // boundary for 0
+    const r1 = outerRadius * 0.60; // boundary for 1
 
     // Helper to draw a ring section
     const drawRing = (innerR, outerR, color) => {
