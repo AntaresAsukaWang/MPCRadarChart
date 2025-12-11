@@ -155,8 +155,6 @@
     font-weight: 600;
   }
 
-  .note {
-
   #error {
     color: var(--color-main);
     font-size: 0.85rem;
@@ -984,26 +982,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 display: true,
                 color: function(context) {
                   const label = context.label;
-                  
-                  // Inflation group
-                  if (['CPI inflation', 'Core inflation', 'Food price inflation', 
-                       'Services inflation', 'Household inflation expectations', 
-                       'Input PPI', 'Corporate GOS'].includes(label)) {
-                    return '#E8956F';
-                  }
-                  
-                  // Labour Market group
-                  if (['Current wage growth', 'Median pay growth', 'Participation rate', 
-                       , 'V/U', 'Unemployment rate'].includes(label)) {
-                    return '#6CA6CD';
-                  }
-                  
-                  // Macro-Finance group
-                  if (['Savings ratio', 'Consumer confidence', 'GDP', 'FTSE100'].includes(label)) {
-                    return '#6FBD92';
-                  }
-                  
-                  return '#999999'; // default
+                  const group = getIndicatorGroup(label);
+                  return (group && group.color) ? group.color : '#999999';
                 },
                 font: {
                   size: 11,
@@ -1026,7 +1006,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 usePointStyle: true,
                 boxWidth: 8,
                 padding: 16,
-                color: '#161C4E'
+                color: function(context) {
+                  const dataset = context.chart?.data?.datasets?.[context.datasetIndex];
+                  return (dataset && dataset.borderColor) ? dataset.borderColor : '#161C4E';
+                }
               }
             },
             tooltip: { 
