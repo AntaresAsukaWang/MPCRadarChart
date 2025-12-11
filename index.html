@@ -464,6 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let indicators = [];
     let entries    = [];
     let sortedEntries = [];
+    let globalMinMax = { min: 0, max: 1 };
 
     const MONTH_ORDER = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
 
@@ -643,6 +644,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!entries.length) {
         throw new Error("No valid entries parsed from CSV. Check Date format (e.g. '1989 JAN').");
       }
+
+      // Compute global min/max across the entire dataset for fixed scaling
+      globalMinMax = computeGlobalMinMax();
     }
 
     function uniqueYears() {
@@ -698,14 +702,70 @@ document.addEventListener('DOMContentLoaded', () => {
       return { values, sources };
     }
 
-    function computeGlobalMax() {
-      let max = 0;
+    function computeGlobalMinMax() {
+      let min = Infinity;
+      let max = -Infinity;
       entries.forEach(e => {
         e.values.forEach(v => {
-          if (typeof v === "number" && v > max) max = v;
+          if (typeof v === "number" && !Number.isNaN(v)) {
+            if (v < min) min = v;
+            if (v > max) max = v;
+          }
         });
       });
-      return max > 0 ? max : 100;
+      if (min === Infinity) min = 0;
+      if (max === -Infinity) max = 1;
+      return { min, max };
+    }
+
+    function buildSegmentMapper(minVal, maxVal) {
+      const NEG_FRAC = 0.30; // below 0 takes 30% of radius
+      const MID_FRAC = 0.20; // 0-1 takes 20%
+      const POS_FRAC = 0.50; // above 1 takes 50%
+
+      const safeMin = (typeof minVal === 'number' && !Number.isNaN(minVal)) ? minVal : 0;
+      const safeMax = (typeof maxVal === 'number' && !Number.isNaN(maxVal)) ? maxVal : 1;
+      const spanNeg = safeMin < 0 ? -safeMin : 0;
+      const spanPos = safeMax > 1 ? (safeMax - 1) : 0;
+
+      const mapValue = (v) => {
+        if (v === null || typeof v !== 'number' || Number.isNaN(v)) return null;
+        if (v <= 0) {
+          if (spanNeg === 0) return 0;
+          const t = (v - safeMin) / (0 - safeMin); // 0→1 across negative span
+          return Math.max(0, Math.min(1, t * NEG_FRAC));
+        }
+        if (v <= 1) {
+          const t = v; // 0–1
+          return NEG_FRAC + t * MID_FRAC;
+        }
+        if (spanPos === 0) return 1;
+        const t = (v - 1) / spanPos; // 0→1 above 1
+        return Math.max(0, Math.min(1, NEG_FRAC + MID_FRAC + t * POS_FRAC));
+      };
+
+      const tickStops = [0, 1];
+      const pushTick = (realVal) => {
+        const mapped = mapValue(realVal);
+        if (mapped === null || Number.isNaN(mapped)) return;
+        if (!tickStops.some(t => Math.abs(t - mapped) < 1e-6)) {
+          tickStops.push(mapped);
+        }
+      };
+
+      pushTick(safeMin);
+      pushTick(0);
+      pushTick(1);
+      pushTick(safeMax);
+
+      tickStops.sort((a, b) => a - b);
+
+      return {
+        mapValue,
+        tickStops,
+        scaleMin: 0,
+        scaleMax: 1
+      };
     }
 
     // Helper: Compute min and max from the currently displayed data arrays.
@@ -908,13 +968,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const sanitizedA = sanitizeForDisplay(rawA);
       const sanitizedB = sanitizeForDisplay(rawB);
 
-      const displayedMinMax = getDisplayedMinMax([rawA, rawB]);
-      const tickStops = computeTickStops(displayedMinMax.min, displayedMinMax.max);
-      const scaleMin = tickStops[0];
-      const scaleMax = tickStops[tickStops.length - 1];
+      const mapper = buildSegmentMapper(globalMinMax.min, globalMinMax.max);
+      const tickStops = mapper.tickStops;
+      const scaleMin = mapper.scaleMin;
+      const scaleMax = mapper.scaleMax;
 
-      const dataA = transformForDeadCenter(sanitizedA, tickStops);
-      const dataB = transformForDeadCenter(sanitizedB, tickStops);
+      const dataA = sanitizedA.map(v => mapper.mapValue(v));
+      const dataB = sanitizedB.map(v => mapper.mapValue(v));
 
       const chart = new Chart(ctx, {
         type: "radar",
@@ -1041,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
       chart._tickStops = tickStops;
-      chart._transformValue = (v) => transformForDeadCenter([v], tickStops)[0];
+      chart._transformValue = (v) => mapper.mapValue(v);
       radarChart = chart;
       
       updateNoteVisibility(sourceA, sourceB);
@@ -1064,19 +1124,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const sanitizedA = sanitizeForDisplay(rawA);
       const sanitizedB = sanitizeForDisplay(rawB);
 
-      const displayedMinMax = getDisplayedMinMax([rawA, rawB]);
-      const tickStops = computeTickStops(displayedMinMax.min, displayedMinMax.max);
-      const scaleMin = tickStops[0];
-      const scaleMax = tickStops[tickStops.length - 1];
+      const mapper = buildSegmentMapper(globalMinMax.min, globalMinMax.max);
+      const tickStops = mapper.tickStops;
 
-      const dataA = transformForDeadCenter(sanitizedA, tickStops);
-      const dataB = transformForDeadCenter(sanitizedB, tickStops);
+      const dataA = sanitizedA.map(v => mapper.mapValue(v));
+      const dataB = sanitizedB.map(v => mapper.mapValue(v));
 
       radarChart._tickStops = tickStops;
-      radarChart._transformValue = (v) => transformForDeadCenter([v], tickStops)[0];
+      radarChart._transformValue = (v) => mapper.mapValue(v);
 
-      radarChart.options.scales.r.min = scaleMin;
-      radarChart.options.scales.r.max = scaleMax;
+      radarChart.options.scales.r.min = mapper.scaleMin;
+      radarChart.options.scales.r.max = mapper.scaleMax;
 
       radarChart.data.datasets[0].label = `${yearA} ${monthA}`;
       radarChart.data.datasets[0].data  = dataA;
