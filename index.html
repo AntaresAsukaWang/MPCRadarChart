@@ -1046,7 +1046,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const sanitizedA = sanitizeForDisplay(rawA);
       const sanitizedB = sanitizeForDisplay(rawB);
 
-      const mapper = buildSegmentMapper(globalMinMax.min, globalMinMax.max);
+      // Calculate min/max from CURRENT selected data, not global
+      let currentMin = Infinity;
+      let currentMax = -Infinity;
+      [...sanitizedA, ...sanitizedB].forEach(v => {
+        if (typeof v === "number" && !Number.isNaN(v)) {
+          if (v < currentMin) currentMin = v;
+          if (v > currentMax) currentMax = v;
+        }
+      });
+      if (currentMin === Infinity) currentMin = 0;
+      if (currentMax === -Infinity) currentMax = 1;
+
+      const mapper = buildSegmentMapper(currentMin, currentMax);
       const tickStops = mapper.tickStops;
       // Use ORIGINAL data range for the scale, NOT the mapped 0-1 range
       const scaleMin = mapper.originalMin;
@@ -1206,7 +1218,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const sanitizedA = sanitizeForDisplay(rawA);
       const sanitizedB = sanitizeForDisplay(rawB);
 
-      const mapper = buildSegmentMapper(globalMinMax.min, globalMinMax.max);
+      // Calculate min/max from CURRENT selected data, not global
+      let currentMin = Infinity;
+      let currentMax = -Infinity;
+      [...sanitizedA, ...sanitizedB].forEach(v => {
+        if (typeof v === "number" && !Number.isNaN(v)) {
+          if (v < currentMin) currentMin = v;
+          if (v > currentMax) currentMax = v;
+        }
+      });
+      if (currentMin === Infinity) currentMin = 0;
+      if (currentMax === -Infinity) currentMax = 1;
+
+      const mapper = buildSegmentMapper(currentMin, currentMax);
       const tickStops = mapper.tickStops;
 
       const dataA = sanitizedA.map(v => mapper.mapValue(v));
