@@ -879,10 +879,20 @@ document.addEventListener('DOMContentLoaded', () => {
       populateYearSelect(yearBSelect);
 
       const yearA = parseInt(yearASelect.value, 10);
+      // Set default for second line to 2020 OCT if available
+      const availableYears = uniqueYears();
+      if (availableYears.includes(2020)) {
+        yearBSelect.value = 2020;
+      }
       const yearB = parseInt(yearBSelect.value, 10);
 
       populateMonthSelect(monthASelect, yearA);
       populateMonthSelect(monthBSelect, yearB);
+      // Try to select OCT for second line if available
+      const monthsB = monthsForYear(yearB);
+      if (monthsB.includes('OCT')) {
+        monthBSelect.value = 'OCT';
+      }
     }
 
     function renderGroupLegend() {
