@@ -283,7 +283,7 @@ const concentricBandsPlugin = {
   }
 };
 
-// Plugin to draw background sections with boundaries at 0 and 1 (DYNAMIC)
+// Plugin to draw background sections with boundaries at 0 and 1 (DYNAMIC with mapper)
 const sectionBackgroundPlugin = {
   id: 'sectionBackground',
   beforeDatasetsDraw(chart) {
@@ -295,23 +295,22 @@ const sectionBackgroundPlugin = {
     const outerRadius = r.drawingArea;
     const labelCount = chart.data.labels.length;
 
-    // Get current scale min/max
-    const scaleMin = r.min;
-    const scaleMax = r.max;
+    // Get the mapper stored on the chart
+    const mapper = chart._mapper;
+    if (!mapper) return;
 
-    console.log('Background: scaleMin=', scaleMin, 'scaleMax=', scaleMax);
+    // Map the key values (0 and 1) using the stored mapper
+    // These return positions in the 0-1 range that Chart.js uses
+    const mappedZero = mapper.mapValue(0);
+    const mappedOne = mapper.mapValue(1);
 
-    // Convert data values 0 and 1 to radial distances
-    const getRadiusForValue = (value) => {
-      if (scaleMax === scaleMin) return outerRadius * 0.5;
-      const normalized = (value - scaleMin) / (scaleMax - scaleMin);
-      return Math.max(0, Math.min(outerRadius, normalized * outerRadius));
+    // Convert mapped values to radii
+    const getRadiusForMappedValue = (mappedVal) => {
+      return mappedVal * outerRadius;
     };
 
-    const r0 = getRadiusForValue(0);  // radius where value = 0
-    const r1 = getRadiusForValue(1);  // radius where value = 1
-
-    console.log('r0=', r0, 'r1=', r1, 'outerRadius=', outerRadius);
+    const r0 = getRadiusForMappedValue(mappedZero);  // radius where original value = 0
+    const r1 = getRadiusForMappedValue(mappedOne);   // radius where original value = 1
 
     // Helper to draw a filled circle (for center)
     const drawCircle = (radius, color) => {
@@ -399,7 +398,7 @@ const sectionBackgroundPlugin = {
   }
 };
 
-// Plugin to draw evenly-spaced circular grid lines (DYNAMIC)
+// Plugin to draw circular grid lines based on mapper ticks (DYNAMIC)
 const evenGridLinesPlugin = {
   id: 'evenGridLines',
   beforeDatasetsDraw(chart) {
@@ -412,39 +411,19 @@ const evenGridLinesPlugin = {
     const outerRadius = r.drawingArea;
     const labelCount = chart.data.labels.length;
     
-    // Get current scale min/max
-    const scaleMin = r.min;
-    const scaleMax = r.max;
+    // Get the mapper stored on the chart
+    const mapper = chart._mapper;
+    if (!mapper) return;
 
-    // Convert data values to radial distances
-    const getRadiusForValue = (value) => {
-      if (scaleMax === scaleMin) return outerRadius * 0.5;
-      const normalized = (value - scaleMin) / (scaleMax - scaleMin);
-      return Math.max(0, Math.min(outerRadius, normalized * outerRadius));
-    };
-
-    // Draw grid lines at key data points (0, 1, and some ticks)
-    const keyValues = [];
-    
-    // Add 0 if in range
-    if (scaleMin <= 0 && 0 <= scaleMax) keyValues.push(0);
-    
-    // Add 1 if in range
-    if (scaleMin <= 1 && 1 <= scaleMax) keyValues.push(1);
-    
-    // Add some intermediate ticks
-    const step = (scaleMax - scaleMin) / 5;
-    for (let i = 0; i <= 5; i++) {
-      const val = scaleMin + step * i;
-      if (!keyValues.includes(val)) keyValues.push(val);
-    }
+    // Use the tick stops from the mapper to draw grid lines
+    const tickStops = mapper.tickStops || [0, 1];
     
     ctx.save();
     ctx.strokeStyle = 'rgba(190, 190, 190, 0.3)';
     ctx.lineWidth = 1;
     
-    keyValues.forEach(value => {
-      const radius = getRadiusForValue(value);
+    tickStops.forEach(mappedTick => {
+      const radius = mappedTick * outerRadius;
       if (radius <= 0 || radius >= outerRadius) return;
       
       ctx.beginPath();
@@ -808,6 +787,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return Math.max(0, Math.min(1, NEG_FRAC + MID_FRAC + t * POS_FRAC));
       };
 
+      // Inverse: convert mapped value back to original value
+      const unmapValue = (mapped) => {
+        if (mapped <= NEG_FRAC) {
+          // In the <0 region
+          if (spanNeg === 0) return safeMin;
+          const t = mapped / NEG_FRAC; // 0→1 within negative fraction
+          return safeMin + t * (0 - safeMin);
+        }
+        if (mapped <= NEG_FRAC + MID_FRAC) {
+          // In the 0-1 region
+          const t = (mapped - NEG_FRAC) / MID_FRAC; // 0→1 within middle fraction
+          return t; // returns 0-1
+        }
+        // In the >1 region
+        if (spanPos === 0) return safeMax;
+        const t = (mapped - NEG_FRAC - MID_FRAC) / POS_FRAC; // 0→1 within positive fraction
+        return 1 + t * spanPos;
+      };
+
       const tickStops = [0, 1];
       const pushTick = (realVal) => {
         const mapped = mapValue(realVal);
@@ -826,9 +824,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       return {
         mapValue,
+        unmapValue,
         tickStops,
         scaleMin: 0,
-        scaleMax: 1
+        scaleMax: 1,
+        originalMin: safeMin,
+        originalMax: safeMax,
+        NEG_FRAC,
+        MID_FRAC,
+        POS_FRAC
       };
     }
 
@@ -1174,6 +1178,9 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       });
+      
+      // Store mapper on chart for plugins to access
+      chart._mapper = mapper;
       chart._tickStops = tickStops;
       chart._transformValue = (v) => mapper.mapValue(v);
       radarChart = chart;
@@ -1204,6 +1211,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const dataA = sanitizedA.map(v => mapper.mapValue(v));
       const dataB = sanitizedB.map(v => mapper.mapValue(v));
 
+      radarChart._mapper = mapper;
       radarChart._tickStops = tickStops;
       radarChart._transformValue = (v) => mapper.mapValue(v);
 
